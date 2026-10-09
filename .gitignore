@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+
+# logs
+*.log
+npm-debug.log*
+
+# test coverage
+coverage/
+
+# environment
+.env
+.env.*
+
+# editor / OS
+.DS_Store
+Thumbs.db
+*.swp

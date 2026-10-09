@@ -1,0 +1,26 @@
+{
+  "name": "sim-light",
+  "version": "0.1.0",
+  "description": "An animated WebGPU simulation of a 2D scalar wave coupled to a lattice of Lorentz oscillators.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "sim-light": "src/cli.mjs"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "start": "node src/cli.mjs",
+    "test": "node --test",
+    "lint": "eslint .",
+    "format": "eslint . --fix"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0"
+  }
+}
