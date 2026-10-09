@@ -9,7 +9,7 @@ struct Parameters {
   damping: f32,
   polarizability: f32,
   coupling: f32,
-  padding: f32,
+  lattice_enabled: u32,
 };
 
 @group(0) @binding(0) var<storage, read> medium_previous: array<f32>;
@@ -29,7 +29,7 @@ fn update_dipoles(@builtin(global_invocation_id) id: vec3<u32>) {
   let index = id.x;
   let count = params.width * params.height;
   if (index >= count) { return; }
-  if (atom_sites[index] < 0.5) {
+  if (params.lattice_enabled == 0u || atom_sites[index] < 0.5) {
     dipole_next[index] = 0.0;
     return;
   }
@@ -106,7 +106,7 @@ fn update_medium(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let damping = boundary_damping(x, y);
   var polarization_acceleration = 0.0;
-  if (atom_sites[index] > 0.5) {
+  if (params.lattice_enabled == 1u && atom_sites[index] > 0.5) {
     polarization_acceleration = dipole_next[index]
       - 2.0 * dipole_current[index] + dipole_previous[index];
   }
@@ -128,12 +128,13 @@ struct DisplayParameters {
   grid_height: u32,
   slab_start: u32,
   slab_end: u32,
-  padding: u32,
+  lattice_enabled: u32,
 };
 
 @group(0) @binding(0) var<storage, read> vacuum_field: array<f32>;
 @group(0) @binding(1) var<storage, read> medium_field: array<f32>;
 @group(0) @binding(2) var<uniform> display: DisplayParameters;
+@group(0) @binding(3) var<storage, read> atom_sites: array<f32>;
 
 @vertex
 fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> @builtin(position) vec4<f32> {
@@ -169,11 +170,40 @@ fn fragment_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f3
   if (display.view == 0u) { value = incident; }
   if (display.view == 1u) { value = transmitted - incident; scale = 2.0; }
   var color = field_color(value, scale);
-  if (x >= display.slab_start && x <= display.slab_end) {
+  if (display.lattice_enabled == 1u && x >= display.slab_start && x <= display.slab_end) {
     color = mix(color, vec3<f32>(0.10, 0.34, 0.27), 0.11);
   }
-  if (x == display.slab_start || x == display.slab_end) {
+  if (display.lattice_enabled == 1u && (x == display.slab_start || x == display.slab_end)) {
     color = vec3<f32>(0.94, 0.97, 0.86);
+  }
+  if (display.lattice_enabled == 1u && display.view != 0u
+    && x >= display.slab_start + 2u && x <= display.slab_end
+    && y >= 3u && y < display.grid_height - 3u) {
+    let grid_position = vec2<f32>(
+      position.x * f32(display.grid_width) / display.canvas_width,
+      position.y * f32(display.grid_height) / display.canvas_height,
+    );
+    let first_atom_x = f32(display.slab_start + 3u);
+    let atom_x = first_atom_x + 4.0 * floor((grid_position.x - 0.5 - first_atom_x + 2.0) / 4.0);
+    let atom_y = 4.0 + 4.0 * floor((grid_position.y - 0.5 - 4.0 + 2.0) / 4.0);
+    if (atom_x >= first_atom_x && atom_x < f32(display.slab_end)
+      && atom_y >= 4.0 && atom_y < f32(display.grid_height - 4u)) {
+      let atom_index = u32(atom_y) * display.grid_width + u32(atom_x);
+      if (atom_sites[atom_index] > 0.5) {
+        let pixel_scale = vec2<f32>(
+          display.canvas_width / f32(display.grid_width),
+          display.canvas_height / f32(display.grid_height),
+        );
+        let offset = (grid_position - vec2<f32>(atom_x + 0.5, atom_y + 0.5)) * pixel_scale;
+        let distance = length(offset);
+        if (distance <= 4.0) {
+          color = vec3<f32>(0.08, 0.20, 0.21);
+        }
+        if (distance <= 2.2) {
+          color = vec3<f32>(1.0, 0.68, 0.28);
+        }
+      }
+    }
   }
   return vec4<f32>(color, 1.0);
 }
@@ -215,6 +245,7 @@ export class WaveSimulation {
     this.damping = 0.015;
     this.polarizability = 1.2;
     this.coupling = 2;
+    this.latticeEnabled = true;
     this.step = 0;
     this.slabStart = 104;
     this.slabEnd = 216;
@@ -293,6 +324,7 @@ export class WaveSimulation {
     view.setFloat32(24, this.damping, true);
     view.setFloat32(28, this.polarizability, true);
     view.setFloat32(32, this.coupling, true);
+    view.setUint32(36, this.latticeEnabled ? 1 : 0, true);
     this.device.queue.writeBuffer(this.parameters, 0, bytes);
   }
 
@@ -335,6 +367,11 @@ export class WaveSimulation {
     rotate(this.dipoles);
   }
 
+  setLatticeEnabled(enabled) {
+    if (this.latticeEnabled === enabled) return;
+    this.latticeEnabled = enabled;
+  }
+
   reset() {
     const encoder = this.device.createCommandEncoder();
     for (const buffer of [...this.medium, ...this.vacuum, ...this.dipoles]) {
@@ -357,6 +394,7 @@ export class WaveSimulation {
       params.setUint32(16, this.height, true);
       params.setUint32(20, this.slabStart, true);
       params.setUint32(24, this.slabEnd, true);
+      params.setUint32(28, this.latticeEnabled ? 1 : 0, true);
       this.device.queue.writeBuffer(display.buffer, 0, bytes);
       const bindGroup = this.device.createBindGroup({
         layout: this.displayPipeline.getBindGroupLayout(0),
@@ -364,6 +402,7 @@ export class WaveSimulation {
           { binding: 0, resource: { buffer: this.vacuum[1] } },
           { binding: 1, resource: { buffer: this.medium[1] } },
           { binding: 2, resource: { buffer: display.buffer } },
+          { binding: 3, resource: { buffer: this.atomSites } },
         ],
       });
       const pass = encoder.beginRenderPass({

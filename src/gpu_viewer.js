@@ -1,4 +1,4 @@
-import { WaveSimulation } from './wave_solver.mjs?v=4';
+import { WaveSimulation } from './wave_solver.mjs?v=5';
 
 const canvases = [
   document.querySelector('#incident-canvas'),
@@ -10,6 +10,7 @@ const speedInput = document.querySelector('#speed');
 const speedLabel = document.querySelector('#speed-label');
 const pauseButton = document.querySelector('#pause');
 const resetButton = document.querySelector('#reset');
+const latticeToggle = document.querySelector('#lattice-toggle');
 const frameGallery = document.querySelector('#frame-gallery');
 let paused = false;
 let simulationRate = Number(speedInput.value);
@@ -38,24 +39,30 @@ function showError(error) {
 
 function captureFrame(simulation) {
   const captureEpoch = simulationEpoch;
+  const latticeEnabled = simulation.latticeEnabled;
   const pixelRatio = window.devicePixelRatio || 1;
   const frameCanvas = document.createElement('canvas');
   const headingHeight = Math.round(28 * pixelRatio);
   const gap = Math.round(3 * pixelRatio);
   frameCanvas.width = canvases[0].width;
-  frameCanvas.height = canvases.reduce((height, canvas) => height + headingHeight + canvas.height + gap, 0);
+  const captureCanvases = [canvases[0], canvases[2], canvases[1]];
+  frameCanvas.height = captureCanvases.reduce((height, canvas) => height + headingHeight + canvas.height + gap, 0);
   const context = frameCanvas.getContext('2d');
-  const titles = ['Vacuum reference', 'Scattered difference', 'With atomic lattice'];
+  const titles = [
+    'Vacuum reference',
+    latticeEnabled ? 'With atomic lattice' : 'No lattice: wave only',
+    latticeEnabled ? 'Scattered difference' : 'No lattice: zero difference',
+  ];
   let y = 0;
   context.fillStyle = '#f6f3eb';
   context.fillRect(0, 0, frameCanvas.width, frameCanvas.height);
   context.font = `${Math.round(14 * pixelRatio)}px system-ui`;
   context.fillStyle = '#123c4a';
-  for (let index = 0; index < canvases.length; index += 1) {
+  for (let index = 0; index < captureCanvases.length; index += 1) {
     context.fillText(titles[index], 8 * pixelRatio, y + headingHeight * 0.72);
     y += headingHeight;
-    context.drawImage(canvases[index], 0, y, frameCanvas.width, canvases[index].height);
-    y += canvases[index].height + gap;
+    context.drawImage(captureCanvases[index], 0, y, frameCanvas.width, captureCanvases[index].height);
+    y += captureCanvases[index].height + gap;
   }
   frameCanvas.toBlob((blob) => {
     if (!blob || captureEpoch !== simulationEpoch) return;
@@ -70,7 +77,7 @@ function captureFrame(simulation) {
     image.src = url;
     image.alt = `Simulation at ${elapsed} seconds`;
     const label = document.createElement('span');
-    label.textContent = `Frame ${frameNumber} · t = ${elapsed} s`;
+    label.textContent = `Frame ${frameNumber} · t = ${elapsed} s · lattice ${latticeEnabled ? 'on' : 'off'}`;
     link.append(image, label);
     frameGallery.append(link);
     capturedFrames.push({ link, url });
@@ -148,6 +155,10 @@ function resetSimulation() {
 
 pauseButton.addEventListener('click', togglePause);
 resetButton.addEventListener('click', resetSimulation);
+latticeToggle.addEventListener('change', () => {
+  if (!window.waveSimulation) return;
+  window.waveSimulation.setLatticeEnabled(latticeToggle.checked);
+});
 document.addEventListener('keydown', (event) => {
   if (event.code === 'Space' && !['INPUT', 'BUTTON'].includes(document.activeElement.tagName)) {
     event.preventDefault();

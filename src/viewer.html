@@ -25,6 +25,8 @@
     .rule { margin: 28px 0; border: 0; border-top: 1px solid var(--line); }
     .side p { margin: 0; color: #35605e; font: 14px/1.55 system-ui, sans-serif; }
     label { display: flex; justify-content: space-between; margin: 16px 0 8px; font: 13px system-ui, sans-serif; }
+    .toggle-control { align-items: center; margin-top: 18px; }
+    .toggle-control input { width: auto; margin: 0; }
     input { width: 100%; accent-color: var(--ink); }
     .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 28px; font: 13px system-ui, sans-serif; }
     .legend span { display: flex; align-items: center; gap: 6px; }
@@ -63,6 +65,7 @@
         <p>Each lattice site approximates a bound electron as a Lorentz oscillator. It responds to the local field; its acceleration radiates into the wave equation, and the other atoms respond to that new field.</p>
         <p class="equation"><strong>Wave:</strong> Eₜₜ = c²∇²E − gPₜₜ</p>
         <p class="equation"><strong>Atom:</strong> pₜₜ + γpₜ + ω₀²p = αω₀²E local</p>
+        <label class="toggle-control" for="lattice-toggle">Atomic lattice <input id="lattice-toggle" type="checkbox" checked></label>
         <label for="speed">Simulation rate <output id="speed-label">1.0×</output></label>
         <input id="speed" type="range" min="0.3" max="2" value="1" step="0.1">
         <button id="pause" style="margin-top: 18px">Pause <kbd>space</kbd></button>
@@ -76,6 +79,6 @@
       <div id="frame-gallery" class="frame-gallery" aria-live="polite"></div>
     </section>
   </main>
-  <script type="module" src="/gpu_viewer.js?v=4"></script>
+  <script type="module" src="/gpu_viewer.js?v=5"></script>
 </body>
 </html>

@@ -21,9 +21,12 @@ test('browser viewer is packaged with the simulation', async () => {
   assert.match(html, /3\. Scattered field = panel 2 − panel 1/);
   assert.match(html, /id="frame-gallery"/);
   assert.match(html, /id="reset"/);
-  assert.match(html, /src="\/gpu_viewer\.js\?v=4"/);
+  assert.match(html, /id="lattice-toggle" type="checkbox" checked/);
+  assert.match(html, /src="\/gpu_viewer\.js\?v=5"/);
 
   assert.match(javascript, /WaveSimulation\.create\(canvases\)/);
+  assert.match(javascript, /setLatticeEnabled\(latticeToggle\.checked\)/);
+  assert.doesNotMatch(javascript, /setLatticeEnabled\(latticeToggle\.checked\);[\s\S]{0,100}clearCapturedFrames/);
   assert.match(javascript, /maximumFrames = 24/);
   assert.match(javascript, /captureFrame\(simulation\)/);
   assert.match(javascript, /Math\.floor\(simulation\.step \/ 60\)/);
@@ -33,12 +36,14 @@ test('browser viewer is packaged with the simulation', async () => {
   assert.match(solver, /update_vacuum/);
   assert.match(solver, /update_medium/);
   assert.match(solver, /transmitted - incident/);
+  assert.match(solver, /lattice_enabled: u32/);
+  assert.match(solver, /setLatticeEnabled\(enabled\)/);
+  assert.match(solver, /distance <= 4\.0/);
+  assert.match(solver, /atom_sites\[atom_index\] > 0\.5/);
   assert.match(solver, /createComputePipelineAsync/);
   assert.match(solver, /fn boundary_damping\(x: u32, y: u32\) -> f32/);
   assert.match(solver, /if \(right_distance < 56u\)/);
   assert.match(solver, /if \(vertical_distance < 32u\)/);
-  assert.doesNotMatch(solver, /let atom_x/);
-  assert.doesNotMatch(solver, /let atom_y/);
   assert.match(solver, /reset\(\)/);
   assert.match(solver, /x \+= 4/);
   assert.match(solver, /y \+= 4/);

@@ -35,3 +35,6 @@ open space, so they do not bounce back from the edge of the display. The atomic
 radiators and their interference are computed rather than drawn as rings. The
 lattice spacing is kept smaller than the wavelength to limit artificial
 diffraction from the coarse grid.
+
+For a fuller description of the panels, controls, captures, and model limits,
+see [Simulation Overview](docs/simulation-overview.md).
