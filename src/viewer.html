@@ -68,10 +68,12 @@
         <label class="toggle-control" for="lattice-toggle">Atomic lattice <input id="lattice-toggle" type="checkbox" checked></label>
         <label for="speed">Simulation rate <output id="speed-label">1.0×</output></label>
         <input id="speed" type="range" min="0.3" max="2" value="1" step="0.1">
+        <label for="padding">Hidden edge padding <output id="padding-label">8 λ</output></label>
+        <input id="padding" type="range" min="0" max="30" value="8" step="1">
         <button id="pause" style="margin-top: 18px">Pause <kbd>space</kbd></button>
         <button id="reset" style="margin-top: 8px">Reset simulation <kbd>R</kbd></button>
         <div class="legend"><span><i style="background: var(--coral)"></i>positive</span><span><i style="background: var(--blue)"></i>negative</span><span><i style="background: #f9f5e8; border: 1px solid #aaa"></i>cancellation</span></div>
-        <p class="note">The Lorentz dipole lattice exists in the solver, not as a drawn overlay. Each panel shows only its computed field. Smoothly damped edge layers reduce outgoing waves and boundary echoes, but are approximate, not perfectly reflection-free. The model omits vector polarization and atomic-scale structure.</p>
+        <p class="note">The Lorentz dipole lattice exists in the solver, not as a drawn overlay. Each panel shows only its computed field. Hidden edge padding keeps the approximate absorbing layers outside the displayed region. The model omits vector polarization and atomic-scale structure.</p>
       </aside>
     </section>
     <section class="captures" aria-label="Captured simulation frames">
@@ -79,6 +81,6 @@
       <div id="frame-gallery" class="frame-gallery" aria-live="polite"></div>
     </section>
   </main>
-  <script type="module" src="/gpu_viewer.js?v=5"></script>
+  <script type="module" src="/gpu_viewer.js?v=7"></script>
 </body>
 </html>

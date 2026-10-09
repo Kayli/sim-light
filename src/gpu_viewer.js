@@ -1,4 +1,4 @@
-import { WaveSimulation } from './wave_solver.mjs?v=5';
+import { WaveSimulation } from './wave_solver.mjs?v=7';
 
 const canvases = [
   document.querySelector('#incident-canvas'),
@@ -8,6 +8,8 @@ const canvases = [
 const status = document.querySelector('#simulation-status');
 const speedInput = document.querySelector('#speed');
 const speedLabel = document.querySelector('#speed-label');
+const paddingInput = document.querySelector('#padding');
+const paddingLabel = document.querySelector('#padding-label');
 const pauseButton = document.querySelector('#pause');
 const resetButton = document.querySelector('#reset');
 const latticeToggle = document.querySelector('#lattice-toggle');
@@ -136,6 +138,18 @@ async function start() {
 speedInput.addEventListener('input', () => {
   simulationRate = Number(speedInput.value);
   speedLabel.value = `${simulationRate.toFixed(1)}×`;
+});
+
+paddingInput.addEventListener('input', () => {
+  paddingLabel.value = `${paddingInput.value} λ`;
+});
+
+paddingInput.addEventListener('change', () => {
+  const simulation = window.waveSimulation;
+  if (!simulation || !simulation.setPaddingWavelengths(Number(paddingInput.value))) return;
+  pendingSteps = 0;
+  lastFrame = performance.now();
+  clearCapturedFrames();
 });
 
 function togglePause() {

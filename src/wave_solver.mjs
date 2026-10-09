@@ -126,6 +126,10 @@ struct DisplayParameters {
   view: u32,
   grid_width: u32,
   grid_height: u32,
+  view_width: u32,
+  view_height: u32,
+  view_offset_x: u32,
+  view_offset_y: u32,
   slab_start: u32,
   slab_end: u32,
   lattice_enabled: u32,
@@ -160,8 +164,10 @@ fn field_color(value: f32, scale: f32) -> vec3<f32> {
 
 @fragment
 fn fragment_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
-  let x = min(u32(position.x / display.canvas_width * f32(display.grid_width)), display.grid_width - 1u);
-  let y = min(u32(position.y / display.canvas_height * f32(display.grid_height)), display.grid_height - 1u);
+  let view_x = min(u32(position.x / display.canvas_width * f32(display.view_width)), display.view_width - 1u);
+  let view_y = min(u32(position.y / display.canvas_height * f32(display.view_height)), display.view_height - 1u);
+  let x = view_x + display.view_offset_x;
+  let y = view_y + display.view_offset_y;
   let index = y * display.grid_width + x;
   let incident = vacuum_field[index];
   let transmitted = medium_field[index];
@@ -180,8 +186,8 @@ fn fragment_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f3
     && x >= display.slab_start + 2u && x <= display.slab_end
     && y >= 3u && y < display.grid_height - 3u) {
     let grid_position = vec2<f32>(
-      position.x * f32(display.grid_width) / display.canvas_width,
-      position.y * f32(display.grid_height) / display.canvas_height,
+      position.x * f32(display.view_width) / display.canvas_width + f32(display.view_offset_x),
+      position.y * f32(display.view_height) / display.canvas_height + f32(display.view_offset_y),
     );
     let first_atom_x = f32(display.slab_start + 3u);
     let atom_x = first_atom_x + 4.0 * floor((grid_position.x - 0.5 - first_atom_x + 2.0) / 4.0);
@@ -191,8 +197,8 @@ fn fragment_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f3
       let atom_index = u32(atom_y) * display.grid_width + u32(atom_x);
       if (atom_sites[atom_index] > 0.5) {
         let pixel_scale = vec2<f32>(
-          display.canvas_width / f32(display.grid_width),
-          display.canvas_height / f32(display.grid_height),
+          display.canvas_width / f32(display.view_width),
+          display.canvas_height / f32(display.view_height),
         );
         let offset = (grid_position - vec2<f32>(atom_x + 0.5, atom_y + 0.5)) * pixel_scale;
         let distance = length(offset);
@@ -236,9 +242,8 @@ export class WaveSimulation {
   constructor(device, canvases) {
     this.device = device;
     this.canvases = canvases;
-    this.width = 320;
-    this.height = 180;
-    this.count = this.width * this.height;
+    this.viewWidth = 320;
+    this.viewHeight = 180;
     this.waveSpeed = 0.62;
     this.driveFrequency = 0.24;
     this.resonance = 0.33;
@@ -249,24 +254,59 @@ export class WaveSimulation {
     this.step = 0;
     this.slabStart = 104;
     this.slabEnd = 216;
-    this.medium = createBufferSet(device, this.count * 4, 'medium field');
-    this.vacuum = createBufferSet(device, this.count * 4, 'vacuum field');
-    this.dipoles = createBufferSet(device, this.count * 4, 'atomic dipoles');
+    this.paddingWavelengths = 8;
+    this.paddingCells = this.calculatePaddingCells(this.paddingWavelengths);
+    this.configureGrid();
+    this.allocateStateBuffers();
     this.parameters = createBuffer(device, 48, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 'simulation parameters');
-    this.atomSites = createBuffer(
-      device,
-      this.count * 4,
-      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-      'atomic lattice sites',
-    );
-    this.initializeAtoms();
     this.displayBuffers = canvases.map((canvas, index) => {
-      const buffer = createBuffer(device, 32, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, `display parameters ${index}`);
+      const buffer = createBuffer(device, 48, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, `display parameters ${index}`);
       const context = canvas.getContext('webgpu');
       context.configure({ device, format: navigator.gpu.getPreferredCanvasFormat(), alphaMode: 'opaque' });
       return { canvas, context, buffer, view: index };
     });
     this.format = navigator.gpu.getPreferredCanvasFormat();
+  }
+
+  calculatePaddingCells(wavelengths) {
+    const waveNumber = 2 * Math.asin(Math.sin(this.driveFrequency / 2) / this.waveSpeed);
+    const cellsPerWavelength = 2 * Math.PI / waveNumber;
+    return Math.ceil((wavelengths * cellsPerWavelength) / 4) * 4;
+  }
+
+  configureGrid() {
+    this.width = this.viewWidth + this.paddingCells;
+    this.height = this.viewHeight + 2 * this.paddingCells;
+    this.count = this.width * this.height;
+  }
+
+  allocateStateBuffers() {
+    this.medium = createBufferSet(this.device, this.count * 4, 'medium field');
+    this.vacuum = createBufferSet(this.device, this.count * 4, 'vacuum field');
+    this.dipoles = createBufferSet(this.device, this.count * 4, 'atomic dipoles');
+    this.atomSites = createBuffer(
+      this.device,
+      this.count * 4,
+      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      'atomic lattice sites',
+    );
+    this.initializeAtoms();
+  }
+
+  setPaddingWavelengths(wavelengths) {
+    const nextPadding = Math.max(0, Math.min(30, Math.round(wavelengths)));
+    if (nextPadding === this.paddingWavelengths) return false;
+
+    const oldBuffers = [...this.medium, ...this.vacuum, ...this.dipoles, this.atomSites];
+    this.paddingWavelengths = nextPadding;
+    this.paddingCells = this.calculatePaddingCells(nextPadding);
+    this.configureGrid();
+    this.allocateStateBuffers();
+    this.step = 0;
+    this.device.queue.onSubmittedWorkDone().then(() => {
+      for (const buffer of oldBuffers) buffer.destroy();
+    });
+    return true;
   }
 
   initializeAtoms() {
@@ -385,16 +425,20 @@ export class WaveSimulation {
     const encoder = this.device.createCommandEncoder();
     for (const display of this.displayBuffers) {
       const { width, height } = display.canvas;
-      const bytes = new ArrayBuffer(32);
+      const bytes = new ArrayBuffer(48);
       const params = new DataView(bytes);
       params.setFloat32(0, width, true);
       params.setFloat32(4, height, true);
       params.setUint32(8, display.view, true);
       params.setUint32(12, this.width, true);
       params.setUint32(16, this.height, true);
-      params.setUint32(20, this.slabStart, true);
-      params.setUint32(24, this.slabEnd, true);
-      params.setUint32(28, this.latticeEnabled ? 1 : 0, true);
+      params.setUint32(20, this.viewWidth, true);
+      params.setUint32(24, this.viewHeight, true);
+      params.setUint32(28, 0, true);
+      params.setUint32(32, this.paddingCells, true);
+      params.setUint32(36, this.slabStart, true);
+      params.setUint32(40, this.slabEnd, true);
+      params.setUint32(44, this.latticeEnabled ? 1 : 0, true);
       this.device.queue.writeBuffer(display.buffer, 0, bytes);
       const bindGroup = this.device.createBindGroup({
         layout: this.displayPipeline.getBindGroupLayout(0),

@@ -22,7 +22,8 @@ test('browser viewer is packaged with the simulation', async () => {
   assert.match(html, /id="frame-gallery"/);
   assert.match(html, /id="reset"/);
   assert.match(html, /id="lattice-toggle" type="checkbox" checked/);
-  assert.match(html, /src="\/gpu_viewer\.js\?v=5"/);
+  assert.match(html, /id="padding" type="range" min="0" max="30" value="8" step="1"/);
+  assert.match(html, /src="\/gpu_viewer\.js\?v=7"/);
 
   assert.match(javascript, /WaveSimulation\.create\(canvases\)/);
   assert.match(javascript, /setLatticeEnabled\(latticeToggle\.checked\)/);
@@ -31,6 +32,7 @@ test('browser viewer is packaged with the simulation', async () => {
   assert.match(javascript, /captureFrame\(simulation\)/);
   assert.match(javascript, /Math\.floor\(simulation\.step \/ 60\)/);
   assert.match(javascript, /event\.key\.toLowerCase\(\) === 'r'/);
+  assert.match(javascript, /setPaddingWavelengths\(Number\(paddingInput\.value\)\)/);
 
   assert.match(solver, /update_dipoles/);
   assert.match(solver, /update_vacuum/);
@@ -44,6 +46,9 @@ test('browser viewer is packaged with the simulation', async () => {
   assert.match(solver, /fn boundary_damping\(x: u32, y: u32\) -> f32/);
   assert.match(solver, /if \(right_distance < 56u\)/);
   assert.match(solver, /if \(vertical_distance < 32u\)/);
+  assert.match(solver, /view_offset_y/);
+  assert.match(solver, /setPaddingWavelengths\(wavelengths\)/);
+  assert.match(solver, /Math\.min\(30, Math\.round\(wavelengths\)\)/);
   assert.match(solver, /reset\(\)/);
   assert.match(solver, /x \+= 4/);
   assert.match(solver, /y \+= 4/);

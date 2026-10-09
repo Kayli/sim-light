@@ -35,6 +35,11 @@ The difference panel includes radiation traveling both forward and backward.
   in flight continue propagating after the lattice is switched off; switching
   it back on makes the oscillators respond to the field then present.
 - **Simulation rate** changes how quickly simulation steps advance.
+- **Hidden edge padding** adds simulation space above, below, and to the right
+  of the displayed region, measured in wavelengths. The default is 8
+  wavelengths (132 grid cells after lattice alignment); changing it resets the
+  simulation. Absorbing layers remain at the outer edge of this enlarged
+  domain.
 - **Pause / space** pauses or resumes the animation.
 - **Reset simulation / R** clears the wave and oscillator buffers, restarts
   the source from the beginning, and clears captured frames.
@@ -64,9 +69,10 @@ simulation:
 - The lattice, oscillator constants, and coupling are illustrative rather
   than calibrated to a particular material, so the model should not be used
   for quantitative reflectance or refractive-index predictions.
-- Smooth damping layers reduce outgoing waves at the right and side edges.
-  They approximate open boundaries but are not perfectly reflection-free
-  perfectly matched layers.
+- Smooth damping layers reduce outgoing waves at the outer edges of the
+  enlarged domain. Hidden padding keeps these layers away from the displayed
+  region. They approximate open boundaries but are not perfectly matched
+  layers, so the finite grid is not perfectly reflection-free.
 - The lattice is coarse compared with atomic-scale structure. Its spacing is
   chosen relative to the simulated wavelength to limit grid diffraction.
 
