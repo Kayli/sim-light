@@ -13,7 +13,8 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "dbaeumer.vscode-eslint"
+        "dbaeumer.vscode-eslint",
+        "budowella.combswell@prerelease"
       ],
       "settings": {
         "chat.agent.sandbox.enabled": "off"
